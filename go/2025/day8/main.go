@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sort"
 )
 
 /*
@@ -104,9 +105,8 @@ func part1(input string) {
 	}
 
 	slices.SortFunc(distances, compareDistance)
-	distances = distances[:10]
+	distances = distances[:1000]
 
-	validJunctions := []Junction{}
 
 	for _, distance := range distances {
 		junctions := distance.Pair
@@ -114,9 +114,7 @@ func part1(input string) {
 		j2 := junctions[1]
 		j1.Edges = append(j1.Edges, j2)
 		j2.Edges = append(j2.Edges, j1)
-		validJunctions = append(validJunctions, *j1)
-		validJunctions = append(validJunctions, *j2)
-		fmt.Println(*&j1.Location, *&j2.Location)
+		// fmt.Println(*&j1.Location, *&j2.Location)
 	}
 
 
@@ -130,7 +128,6 @@ func part1(input string) {
 			return
 		}
 
-		fmt.Println("found", junction.Location)
 		visited[junction.Location] = struct{}{}
 		currSize += 1
 
@@ -140,22 +137,29 @@ func part1(input string) {
 	}
 
 	numCircuits := 0
-	for _, junction := range validJunctions {
+	for _, junction := range junctions {
 		currSize = 0
 		fmt.Println("Graph starting at junction", junction.Location, currSize)
-		dfs(&junction)
-		if currSize > 1 {
+		dfs(junction)
+		if currSize > 0 {
 			fmt.Println("Ended this traversal", currSize)
 			sizes = append(sizes, currSize)
 			numCircuits += 1
 		}
 	}
 
+	sort.Slice(sizes, func(i, j int) bool {
+		return sizes[i] > sizes[j] // note >
+	})
+
+	output := sizes[0] * sizes[1] * sizes[2]
+
 	fmt.Println(sizes)
 	fmt.Println(numCircuits)
+	fmt.Println(output)
 }
 
 func main() {
-	input := utils.GetInputString("test.txt")
+	input := utils.GetInputString("actual.txt")
 	part1(input)
 }
