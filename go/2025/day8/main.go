@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
-	"sort"
 )
 
 /*
@@ -41,7 +41,7 @@ Other considerations:
 - What if we use an adjacency list instead -> could just sort by length of adjacency list -> would skip that node traversal thing
 - We try both
 - Wait, even with nodes and pointers, nodes can still have multiple connections making it O(n^2) space, so I think an adjacency list is fine
-
+Might not work, also realized something. It is impossible to not have a fully connected graph if your edges is equal to your nodes nvm
 Algorithm:
 - Create list of distances
 - Do a nested for loop to calculate the distances between every possible pair of points. Store this in array of {key: distance: value: (coord, coord)}
@@ -68,7 +68,7 @@ type DistancePair struct {
 	Pair     [2]*Junction
 }
 
-func compareDistance (a DistancePair, b DistancePair) int {
+func compareDistance(a DistancePair, b DistancePair) int {
 	return cmp.Compare(a.Distance, b.Distance)
 }
 
@@ -107,7 +107,6 @@ func part1(input string) {
 	slices.SortFunc(distances, compareDistance)
 	distances = distances[:1000]
 
-
 	for _, distance := range distances {
 		junctions := distance.Pair
 		j1 := junctions[0]
@@ -116,7 +115,6 @@ func part1(input string) {
 		j2.Edges = append(j2.Edges, j1)
 		// fmt.Println(*&j1.Location, *&j2.Location)
 	}
-
 
 	visited := map[Coord]struct{}{}
 	sizes := []int{}
@@ -132,7 +130,7 @@ func part1(input string) {
 		currSize += 1
 
 		for _, junction := range junction.Edges {
-			dfs(junction)	
+			dfs(junction)
 		}
 	}
 
@@ -159,7 +157,80 @@ func part1(input string) {
 	fmt.Println(output)
 }
 
+/*
+Update:
+- need to keep connecting based on shortest distance, until all junction boxes form one big circuit
+- To do this, just need to keep track of a visited map while you are calculating the distances.
+- As soon as the length of the map is equal to the length of the junctions, you have connected all of the junctions
+- nevermind, just because you made a connection with every node, does not mean they man one big graph
+- if you traverse, and there is more than one circuit you know that it has not reached the state yet
+- so what if we traverse the graphs on every distance addition, as soon as you get more than one circuit you stop traversing, but, if you do an entire traversal, there is only one circuit you return the output?
+- Might not work, also realized something. It is impossible to not have a fully connected graph if your edges is equal to your nodes nvm
+- What if we connect every node, then remove edges in reverse distance order until the number of edges is equal to the number of junctions
+*/
+
+func part2(input string) {
+	//Create list of junctions
+	junctions := []*Junction{}
+	for junction := range strings.SplitSeq(input, "\n") {
+		coords := strings.Split(junction, ",")
+		x, _ := strconv.Atoi(coords[0])
+		y, _ := strconv.Atoi(coords[1])
+		z, _ := strconv.Atoi(coords[2])
+		newJunction := Junction{Location: Coord{X: x, Y: y, Z: z}, Edges: []*Junction{}}
+		junctions = append(junctions, &newJunction)
+	}
+
+	//NOTE: Made it into a set for better time complexity
+	connections := make(map[[2]Coord]struct{})
+	distances := []DistancePair{}
+	for _, junction := range junctions {
+		for _, nextJunction := range junctions {
+			_, inConnections := connections[[2]Coord{nextJunction.Location, junction.Location}]
+			if nextJunction.Location == junction.Location || inConnections {
+				continue //NOTE: Has already made this connection
+			} else {
+				distance := getDistance(*junction, *nextJunction)
+				distances = append(distances, DistancePair{Distance: distance, Pair: [2]*Junction{junction, nextJunction}})
+				connections[[2]Coord{junction.Location, nextJunction.Location}] = struct{}{}
+			}
+		}
+	}
+
+	slices.SortFunc(distances, compareDistance)
+
+	visited := map[Coord]struct{}{}
+
+	var dfs func(junction *Junction)
+	dfs = func(junction *Junction) {
+		if _, ok := visited[junction.Location]; ok {
+			return
+		}
+
+		visited[junction.Location] = struct{}{}
+
+		for _, junction := range junction.Edges {
+			dfs(junction)
+		}
+	}
+
+	for _, distance := range distances {
+		junctionPair := distance.Pair
+		j1 := junctionPair[0]
+		j2 := junctionPair[1]
+		j1.Edges = append(j1.Edges, j2)
+		j2.Edges = append(j2.Edges, j1)
+		visited = map[Coord]struct{}{}
+		dfs(junctions[0])
+		if len(visited) == len(junctions) {
+			output := j1.Location.X * j2.Location.X
+			fmt.Println(output)
+			break
+		}
+	}
+}
+
 func main() {
-	input := utils.GetInputString("actual.txt")
-	part1(input)
+	input := utils.GetInputString("test.txt")
+	part2(input)
 }
