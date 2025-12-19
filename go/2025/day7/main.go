@@ -3,6 +3,7 @@ package main
 import (
 	"aoc/shared"
 	"fmt"
+	"time"
 )
 
 /*
@@ -110,7 +111,7 @@ type Coord struct {
 	C int
 }
 
-func part2(input string) {
+func part2(input string, useMemoization bool) {
 	grid := utils.BuildByteGrid(input)
 	timelines := map[Coord]int{}
 	numRows := len(grid)
@@ -131,12 +132,15 @@ func part2(input string) {
 			return 1
 		} else {
 			var numTimelines int
-			if _, exists := timelines[coord]; exists {
-
-				return timelines[coord]
+			if useMemoization {
+				if _, exists := timelines[coord]; exists {
+					return timelines[coord]
+				}
 			}
 			numTimelines = getTimelines(r, c - 1) + getTimelines(r, c + 1)
-			timelines[coord] = numTimelines
+			if useMemoization {
+				timelines[coord] = numTimelines
+			}
 			return numTimelines
 		}
 	}
@@ -151,6 +155,14 @@ func part2(input string) {
 }
 
 func main() {
-	input := utils.GetInputString("actual.txt")
-	part2(input)
+	input := utils.GetInputString("test.txt")
+	startTime := time.Now()
+	part2(input, true)
+	elapsedTime := time.Since(startTime)
+	fmt.Println("Elapsed Time DP:", elapsedTime)
+
+	startTime = time.Now()
+	part2(input, false)
+	elapsedTime = time.Since(startTime)
+	fmt.Println("Elapsed Time Normal:", elapsedTime)
 }
